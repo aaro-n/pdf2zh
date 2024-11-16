@@ -1,0 +1,6 @@
+services:
+  pdf2zh:
+    build:
+      context: .
+    image: pdf2zh
+    container_name: pdf2zh
