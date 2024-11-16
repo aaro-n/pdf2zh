@@ -54,14 +54,14 @@ jobs:
        env:
          DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
          DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
-      run: |
-       echo "${{ steps.get_commit_sha.outputs.commit_sha }}" > version
-       echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-       docker buildx build --platform linux/amd64,linux/arm64 \
-         -t aaronlee/pdf2zh:latest \
-         -t aaronlee/pdf2zh:${{ steps.set-timestamp.outputs.timestamp }} \
-         -t aaronlee/pdf2zh:${{ steps.extract_version_prefix.outputs.version_prefix }} \
-         --push .
+       run: |
+        echo "${{ steps.get_commit_sha.outputs.commit_sha }}" > version
+        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+        docker buildx build --platform linux/amd64,linux/arm64 \
+          -t aaronlee/pdf2zh:latest \
+          -t aaronlee/pdf2zh:${{ steps.set-timestamp.outputs.timestamp }} \
+          -t aaronlee/pdf2zh:${{ steps.extract_version_prefix.outputs.version_prefix }} \
+          --push .
 
       - name: 更新版本文件
         if: ${{ steps.compare_shas.outputs.build_image == 'true' }}
