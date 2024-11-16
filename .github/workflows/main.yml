@@ -65,10 +65,12 @@ jobs:
         run: |
           echo "${{ steps.get_commit_sha.outputs.commit_sha }}" > version
           
-          # 构建并推送 x86 和 ARM 镜像
-          docker buildx build --platform linux/amd64,linux/arm64 -t aaronlee/pdf2zh:latest --push .
-          docker buildx build --platform linux/amd64,linux/arm64 -t aaronlee/pdf2zh:${{ steps.set-timestamp.outputs.timestamp }} --push .
-          docker buildx build --platform linux/amd64,linux/arm64 -t aaronlee/pdf2zh:${{ steps.extract_version_prefix.outputs.version_prefix }} --push .
+          # 合并构建并推送 x86 和 ARM 镜像
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t aaronlee/pdf2zh:latest \
+            -t aaronlee/pdf2zh:${{ steps.set-timestamp.outputs.timestamp }} \
+            -t aaronlee/pdf2zh:${{ steps.extract_version_prefix.outputs.version_prefix }} \
+            --push .
 
       - name: 更新版本文件
         if: ${{ steps.compare_shas.outputs.build_image == 'true' }}
