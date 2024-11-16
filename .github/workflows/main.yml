@@ -17,54 +17,54 @@ jobs:
 
       - name: 设置构建时间戳
         id: set-timestamp
-        run: echo "::set-output name=timestamp::$(date +'%Y%m%d%H%M%S')"
+        run: echo "timestamp=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
 
       - name: 获取最新提交的 SHA
         id: get_commit_sha
         run: |
           commit_sha=$(curl -s "https://api.github.com/repos/Byaidu/PDFMathTranslate/commits/main" | jq -r '.sha')
-          echo "::set-output name=commit_sha::$commit_sha"
+          echo "commit_sha=$commit_sha" >> $GITHUB_ENV
 
       - name: 检查存储的版本
         id: check_version
         run: |
           stored_version=$(cat version)
-          echo "::set-output name=stored_version::$stored_version"
+          echo "stored_version=$stored_version" >> $GITHUB_ENV
 
       - name: 比较提交的 SHA
         id: compare_shas
         run: |
-          if [[ "${{ steps.get_commit_sha.outputs.commit_sha }}" == "${{ steps.check_version.outputs.stored_version }}" ]]; then
+          if [[ "${{ env.commit_sha }}" == "${{ env.stored_version }}" ]]; then
             echo "提交的 SHA 相同，跳过镜像构建。"
-            echo "::set-output name=build_image::false"
+            echo "build_image=false" >> $GITHUB_ENV
           else
             echo "提交的 SHA 不同，开始构建镜像。"
-            echo "::set-output name=build_image::true"
+            echo "build_image=true" >> $GITHUB_ENV
           fi
 
       - name: 提取版本前缀
         id: extract_version_prefix
         run: |
-          commit_sha=${{ steps.get_commit_sha.outputs.commit_sha }}
+          commit_sha=${{ env.commit_sha }}
           version_prefix=${commit_sha:0:7}
-          echo "::set-output name=version_prefix::$version_prefix"
+          echo "version_prefix=$version_prefix" >> $GITHUB_ENV
 
-     - name: 构建并推送 Docker 镜像
-       if: ${{ steps.compare_shas.outputs.build_image == 'true' }}
-       env:
-         DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-         DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
-       run: |
-        echo "${{ steps.get_commit_sha.outputs.commit_sha }}" > version
-        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-        docker buildx build --platform linux/amd64,linux/arm64 \
-          -t aaronlee/pdf2zh:latest \
-          -t aaronlee/pdf2zh:${{ steps.set-timestamp.outputs.timestamp }} \
-          -t aaronlee/pdf2zh:${{ steps.extract_version_prefix.outputs.version_prefix }} \
-          --push .
+      - name: 构建并推送 Docker 镜像
+        if: ${{ env.build_image == 'true' }}
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "${{ env.commit_sha }}" > version
+          echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t aaronlee/pdf2zh:latest \
+            -t aaronlee/pdf2zh:${{ env.timestamp }} \
+            -t aaronlee/pdf2zh:${{ env.version_prefix }} \
+            --push .
 
       - name: 更新版本文件
-        if: ${{ steps.compare_shas.outputs.build_image == 'true' }}
+        if: ${{ env.build_image == 'true' }}
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
