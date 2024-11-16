@@ -15,10 +15,6 @@ jobs:
       - name: 检出仓库
         uses: actions/checkout@v2
 
-      - name: 设置构建时间戳
-        id: set-timestamp
-        run: echo "::set-output name=timestamp::$(date +'%Y%m%d%H%M%S')"
-
       - name: 获取最新提交的 SHA
         id: get_commit_sha
         run: |
@@ -42,12 +38,24 @@ jobs:
             echo "::set-output name=build_image::true"
           fi
 
+      - name: 设置构建时间戳
+        if: ${{ steps.compare_shas.outputs.build_image == 'true' }}
+        id: set-timestamp
+        run: echo "::set-output name=timestamp::$(date +'%Y%m%d%H%M%S')"
+
       - name: 提取版本前缀
+        if: ${{ steps.compare_shas.outputs.build_image == 'true' }}
         id: extract_version_prefix
         run: |
           commit_sha=${{ steps.get_commit_sha.outputs.commit_sha }}
           version_prefix=${commit_sha:0:7}
           echo "::set-output name=version_prefix::$version_prefix"
+
+      - name: 设置 up Docker Buildx
+        if: ${{ steps.compare_shas.outputs.build_image == 'true' }}
+        run: |
+          docker run --privileged --rm tonistiigi/binfmt --install all
+          docker buildx create --use
 
       - name: 构建并推送 Docker 镜像
         if: ${{ steps.compare_shas.outputs.build_image == 'true' }}
@@ -56,13 +64,11 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           echo "${{ steps.get_commit_sha.outputs.commit_sha }}" > version
-          docker build -t aaronlee/pdf2zh:latest .
-          docker build -t aaronlee/pdf2zh:${{ steps.set-timestamp.outputs.timestamp }} .
-          docker build -t aaronlee/pdf2zh:${{ steps.extract_version_prefix.outputs.version_prefix }}  .
-          echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-          docker push aaronlee/pdf2zh:latest
-          docker push aaronlee/pdf2zh:${{ steps.set-timestamp.outputs.timestamp }}
-          docker push aaronlee/pdf2zh:${{ steps.extract_version_prefix.outputs.version_prefix }}
+          
+          # 构建并推送 x86 和 ARM 镜像
+          docker buildx build --platform linux/amd64,linux/arm64 -t aaronlee/pdf2zh:latest --push .
+          docker buildx build --platform linux/amd64,linux/arm64 -t aaronlee/pdf2zh:${{ steps.set-timestamp.outputs.timestamp }} --push .
+          docker buildx build --platform linux/amd64,linux/arm64 -t aaronlee/pdf2zh:${{ steps.extract_version_prefix.outputs.version_prefix }} --push .
 
       - name: 更新版本文件
         if: ${{ steps.compare_shas.outputs.build_image == 'true' }}
@@ -83,3 +89,4 @@ jobs:
           git add time
           git commit -m "更新时间文件"
           git push origin main
+
