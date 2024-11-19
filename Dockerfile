@@ -6,7 +6,7 @@ WORKDIR /home/www
 
 # 安装 Python 和相关依赖
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 python3-pip build-essential libgl1 libglib2.0-0 && \
+    apt-get install -y --no-install-recommends python3 python3-pip python3-venv build-essential libgl1 libglib2.0-0 && \
     python3 -m venv pdf2zh && \
     ./pdf2zh/bin/pip install pdf2zh && \
     rm -rf /var/lib/apt/lists/*
