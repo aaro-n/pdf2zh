@@ -1,5 +1,5 @@
 # 使用轻量的基像
-FROM python:3.12-slim
+FROM python:3.12
 
 # 设置工作目录
 WORKDIR /home/www
